@@ -627,12 +627,12 @@ void Nut_Init()
 
 void Nut_Quiet()
 {
-	// SysTick->CTRL &= ~SysTick_CTRL_TICKINT_Msk; // disable SysTick
+	taskDISABLE_INTERRUPTS();
 }
 
 void Nut_Unquiet()
 {
-	// SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk; // enable SysTick
+	taskENABLE_INTERRUPTS();
 }
 
 /* Pin Manipulation */
