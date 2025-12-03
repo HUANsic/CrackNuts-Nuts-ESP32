@@ -13,6 +13,7 @@
 #define NUT_BUFFER_SIZE 2000
 
 /*  PIN DEFINITIONS  */
+#ifdef IDF_TARGET_ESP32_S3
 
 #define NUT_LED_PIN 4
 
@@ -34,6 +35,30 @@
 
 #define NUT_UART_TX_PIN 9
 #define NUT_UART_RX_PIN 8
+
+#elif defined(IDF_TARGET_ESP32_C3)
+
+#define NUT_LED_PIN 2
+
+#define NUT_IO_USER_PIN 0 // not used on Nut board, but defined for compatibility (GPIO0)
+
+#define NUT_IO1_PIN 8
+
+#define NUT_IO2_PIN 20
+
+#define NUT_IO3_PIN 21
+
+#define NUT_I2C_SCL_PIN 0
+#define NUT_I2C_SDA_PIN 0
+
+#define NUT_SPI_SCK_PIN 0
+#define NUT_SPI_MISO_PIN 0
+#define NUT_SPI_MOSI_PIN 0
+#define NUT_SPI_CS_PIN 0
+
+#define NUT_UART_TX_PIN 1
+#define NUT_UART_RX_PIN 3
+#endif
 
 /*  ALTERNATE FUNCTION DEFINITIONS  */
 
