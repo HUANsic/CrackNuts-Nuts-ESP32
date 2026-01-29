@@ -35,6 +35,9 @@ NutStatus_e Echo(uint8_t *received_data_ptr, uint32_t received_data_length, uint
 
 /* mbedTLS AES */
 #include "mbedtls/aes.h"
+#include "aes/esp_aes.h"
+#include "hal/aes_hal.h"
+#include "aes/esp_aes_internal.h"
 
 mbedtls_aes_context aes_ctx;
 #define KEY_LENGTH 128
@@ -61,22 +64,51 @@ NutStatus_e AES_Encrypt(uint8_t *received_data_ptr, uint32_t received_data_lengt
 						uint32_t result_buffer_MAX_size)
 {
 	*result_length = 16;
+
+	// int status = mbedtls_aes_crypt_ecb(&aes_ctx, MBEDTLS_AES_ENCRYPT, received_data_ptr, result_buffer_ptr);
+
+	esp_aes_acquire_hardware();
+	aes_ctx.key_in_hardware = 0;
+	aes_ctx.key_in_hardware = aes_hal_setkey((uint8_t *)&aes_ctx, aes_ctx.key_bytes, MBEDTLS_AES_ENCRYPT);
+	aes_hal_mode_init(ESP_AES_BLOCK_MODE_ECB);
+
 	// Nut_Quiet();
 	Nut_LED(1);
 	Nut_Trigger_Set();
-	int status = mbedtls_aes_crypt_ecb(&aes_ctx, MBEDTLS_AES_ENCRYPT, received_data_ptr, result_buffer_ptr);
+
+	aes_hal_transform_block(received_data_ptr, result_buffer_ptr);
+
+	// int status = esp_aes_block(&aes_ctx, received_data_ptr, result_buffer_ptr);
 	Nut_Trigger_Clear();
 	Nut_LED(0);
+
+	esp_aes_release_hardware();
+
 	// Nut_Unquiet();
-	if (status == 0)
-	{
-		return NUT_OK;
-	}
-	else
-	{
-		return NUT_ERROR;
-	}
+
+	return NUT_OK;
 }
+
+// NutStatus_e AES_Encrypt(uint8_t *received_data_ptr, uint32_t received_data_length, uint8_t *result_buffer_ptr, uint32_t *result_length,
+// 						uint32_t result_buffer_MAX_size)
+// {
+// 	*result_length = 16;
+// 	// Nut_Quiet();
+// 	Nut_LED(1);
+// 	Nut_Trigger_Set();
+// 	int status = mbedtls_aes_crypt_ecb(&aes_ctx, MBEDTLS_AES_ENCRYPT, received_data_ptr, result_buffer_ptr);
+// 	Nut_Trigger_Clear();
+// 	Nut_LED(0);
+// 	// Nut_Unquiet();
+// 	if (status == 0)
+// 	{
+// 		return NUT_OK;
+// 	}
+// 	else
+// 	{
+// 		return NUT_ERROR;
+// 	}
+// }
 
 NutStatus_e AES_Decrypt(uint8_t *received_data_ptr, uint32_t received_data_length, uint8_t *result_buffer_ptr, uint32_t *result_length,
 						uint32_t result_buffer_MAX_size)
