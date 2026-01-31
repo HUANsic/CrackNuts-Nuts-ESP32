@@ -69,7 +69,7 @@ NutStatus_e AES_Encrypt(uint8_t *received_data_ptr, uint32_t received_data_lengt
 
 	esp_aes_acquire_hardware();
 	aes_ctx.key_in_hardware = 0;
-	aes_ctx.key_in_hardware = aes_hal_setkey((uint8_t *)&aes_ctx, aes_ctx.key_bytes, MBEDTLS_AES_ENCRYPT);
+	aes_ctx.key_in_hardware = aes_hal_setkey(aes_ctx.key, aes_ctx.key_bytes, MBEDTLS_AES_ENCRYPT);
 	aes_hal_mode_init(ESP_AES_BLOCK_MODE_ECB);
 
 	// Nut_Quiet();
@@ -135,6 +135,11 @@ NutStatus_e AES_Decrypt(uint8_t *received_data_ptr, uint32_t received_data_lengt
 // @formatter:off
 NutAction_t command_list[] = {
 	{.command = 0x0001, .function = Echo},
+	/* mbedTLS AES */
+	{.command = 0x0100, .function = AES_SetEncryptionKey},
+	{.command = 0x0101, .function = AES_SetDecryptionKey},
+	{.command = 0x0102, .function = AES_Encrypt},
+	{.command = 0x0103, .function = AES_Decrypt},
 };
 // @formatter:on
 uint16_t command_count = sizeof(command_list) / sizeof(command_list[0]);
