@@ -135,11 +135,6 @@ NutStatus_e AES_Decrypt(uint8_t *received_data_ptr, uint32_t received_data_lengt
 // @formatter:off
 NutAction_t command_list[] = {
 	{.command = 0x0001, .function = Echo},
-	/* mbedTLS AES */
-	{.command = 0x0100, .function = AES_SetEncryptionKey},
-	{.command = 0x0101, .function = AES_SetDecryptionKey},
-	{.command = 0x0102, .function = AES_Encrypt},
-	{.command = 0x0103, .function = AES_Decrypt},
 };
 // @formatter:on
 uint16_t command_count = sizeof(command_list) / sizeof(command_list[0]);
@@ -147,7 +142,6 @@ uint16_t command_count = sizeof(command_list) / sizeof(command_list[0]);
 void User_Init()
 {
 	ESP_LOGI(TAG, "User Initialization start.");
-	mbedtls_aes_init(&aes_ctx);
 	Nut_LED(1);
 	usleep(200000);
 	Nut_LED(0);
