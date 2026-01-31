@@ -32,8 +32,12 @@ NutStatus_e status;
 NutError_e error;
 
 /* Buffers and variables for communication */
-WORD_ALIGNED_ATTR uint8_t tx_buffer[NUT_BUFFER_SIZE];
-WORD_ALIGNED_ATTR uint8_t rx_buffer[NUT_BUFFER_SIZE];
+
+WORD_ALIGNED_ATTR uint8_t tx_header[NUT_BUFFER_SIZE + 8]; // +8 for word alignment
+WORD_ALIGNED_ATTR uint8_t rx_header[NUT_BUFFER_SIZE + 8];
+uint8_t *tx_buffer = tx_header + 8;
+uint8_t *rx_buffer = rx_header + 8;
+
 spi_slave_transaction_t hspi;
 QueueHandle_t uart_queue;
 
@@ -303,13 +307,13 @@ void Nut_Loop()
 				}
 			}
 			/* Send error package */
-			tx_buffer[0] = NUT_ERROR;
-			tx_buffer[1] = NUT_ERROR_PAYLOAD_SIZE;
-			tx_buffer[2] = 0;
-			tx_buffer[3] = 0;
-			tx_buffer[4] = 0;
-			tx_buffer[5] = 0;
-			uart_write_bytes(NUT_UART, tx_buffer, 6); // no need to check whether it is successful
+			tx_header[0] = NUT_ERROR;
+			tx_header[1] = NUT_ERROR_PAYLOAD_SIZE;
+			tx_header[2] = 0;
+			tx_header[3] = 0;
+			tx_header[4] = 0;
+			tx_header[5] = 0;
+			uart_write_bytes(NUT_UART, tx_header, 6); // no need to check whether it is successful
 			_NutComm_UART_Quit();
 			return;
 		}
@@ -338,13 +342,13 @@ void Nut_Loop()
 			/* Send response package according to response length */
 			if (response_length > NUT_BUFFER_SIZE)
 			{
-				tx_buffer[0] = NUT_ERROR;
-				tx_buffer[1] = NUT_ERROR_PAYLOAD_SIZE;
-				tx_buffer[2] = 0;
-				tx_buffer[3] = 0;
-				tx_buffer[4] = 0;
-				tx_buffer[5] = 0;
-				uart_write_bytes(NUT_UART, tx_buffer, 6); // no need to check whether it is successful
+				tx_header[0] = NUT_ERROR;
+				tx_header[1] = NUT_ERROR_PAYLOAD_SIZE;
+				tx_header[2] = 0;
+				tx_header[3] = 0;
+				tx_header[4] = 0;
+				tx_header[5] = 0;
+				uart_write_bytes(NUT_UART, tx_header, 6); // no need to check whether it is successful
 				ESP_LOGE(TAG, "  Output payload size too large: %ld", response_length);
 				_NutComm_UART_Quit();
 				return;
@@ -354,20 +358,20 @@ void Nut_Loop()
 				/* Prepare header */
 				if (status == NUT_OK)
 				{
-					tx_buffer[0] = NUT_OK;
-					tx_buffer[1] = 0;
+					tx_header[0] = NUT_OK;
+					tx_header[1] = 0;
 				}
 				else
 				{
-					tx_buffer[0] = NUT_ERROR;
-					tx_buffer[1] = NUT_ERROR_USER_CODE;
+					tx_header[0] = NUT_ERROR;
+					tx_header[1] = NUT_ERROR_USER_CODE;
 				}
-				tx_buffer[2] = 0x0FF & (response_length >> 24);
-				tx_buffer[3] = 0x0FF & (response_length >> 16);
-				tx_buffer[4] = 0x0FF & (response_length >> 8);
-				tx_buffer[5] = 0x0FF & (response_length);
+				tx_header[2] = 0x0FF & (response_length >> 24);
+				tx_header[3] = 0x0FF & (response_length >> 16);
+				tx_header[4] = 0x0FF & (response_length >> 8);
+				tx_header[5] = 0x0FF & (response_length);
 				/* Send the header */
-				uart_write_bytes(NUT_UART, tx_buffer, 6);
+				uart_write_bytes(NUT_UART, tx_header, 6);
 				/* Then send the payload */
 				for (i = 0; i < response_length;)
 				{
@@ -393,13 +397,13 @@ void Nut_Loop()
 		/* Command not found, return error */
 		else
 		{
-			tx_buffer[0] = NUT_ERROR;
-			tx_buffer[1] = NUT_ERROR_CMD_UNKNOWN;
-			tx_buffer[2] = 0;
-			tx_buffer[3] = 0;
-			tx_buffer[4] = 0;
-			tx_buffer[5] = 0;
-			uart_write_bytes(NUT_UART, tx_buffer, 6); // no need to check whether it is successful
+			tx_header[0] = NUT_ERROR;
+			tx_header[1] = NUT_ERROR_CMD_UNKNOWN;
+			tx_header[2] = 0;
+			tx_header[3] = 0;
+			tx_header[4] = 0;
+			tx_header[5] = 0;
+			uart_write_bytes(NUT_UART, tx_header, 6); // no need to check whether it is successful
 			ESP_LOGE(TAG, "  Command not found.");
 			_NutComm_UART_Quit();
 			return;
@@ -451,13 +455,14 @@ void Nut_Loop()
 				}
 			}
 			/* Send error package */
-			tx_buffer[0] = NUT_ERROR;
-			tx_buffer[1] = NUT_ERROR_PAYLOAD_SIZE;
-			tx_buffer[2] = 0;
-			tx_buffer[3] = 0;
-			tx_buffer[4] = 0;
-			tx_buffer[5] = 0;
+			tx_header[0] = NUT_ERROR;
+			tx_header[1] = NUT_ERROR_PAYLOAD_SIZE;
+			tx_header[2] = 0;
+			tx_header[3] = 0;
+			tx_header[4] = 0;
+			tx_header[5] = 0;
 			hspi.length = 6;
+			hspi.tx_buffer = tx_header;
 			retstatus = spi_slave_transmit(NUT_SPI, &hspi, 100);
 			if (retstatus != ESP_OK)
 			{
@@ -496,13 +501,14 @@ void Nut_Loop()
 			/* Send response package according to response length */
 			if (response_length > NUT_BUFFER_SIZE)
 			{
-				tx_buffer[0] = NUT_ERROR;
-				tx_buffer[1] = NUT_ERROR_PAYLOAD_SIZE;
-				tx_buffer[2] = 0;
-				tx_buffer[3] = 0;
-				tx_buffer[4] = 0;
-				tx_buffer[5] = 0;
+				tx_header[0] = NUT_ERROR;
+				tx_header[1] = NUT_ERROR_PAYLOAD_SIZE;
+				tx_header[2] = 0;
+				tx_header[3] = 0;
+				tx_header[4] = 0;
+				tx_header[5] = 0;
 				hspi.length = 6;
+				hspi.tx_buffer = tx_header;
 				retstatus = spi_slave_transmit(NUT_SPI, &hspi, 100);
 				if (retstatus != ESP_OK)
 				{
@@ -527,20 +533,21 @@ void Nut_Loop()
 				/* Prepare header */
 				if (status == NUT_OK)
 				{
-					tx_buffer[0] = NUT_OK;
-					tx_buffer[1] = 0;
+					tx_header[0] = NUT_OK;
+					tx_header[1] = 0;
 				}
 				else
 				{
-					tx_buffer[0] = NUT_ERROR;
-					tx_buffer[1] = NUT_ERROR_USER_CODE;
+					tx_header[0] = NUT_ERROR;
+					tx_header[1] = NUT_ERROR_USER_CODE;
 				}
-				tx_buffer[2] = 0x0FF & (response_length >> 24);
-				tx_buffer[3] = 0x0FF & (response_length >> 16);
-				tx_buffer[4] = 0x0FF & (response_length >> 8);
-				tx_buffer[5] = 0x0FF & (response_length);
+				tx_header[2] = 0x0FF & (response_length >> 24);
+				tx_header[3] = 0x0FF & (response_length >> 16);
+				tx_header[4] = 0x0FF & (response_length >> 8);
+				tx_header[5] = 0x0FF & (response_length);
 				/* Send the header */
 				hspi.length = 6;
+				hspi.tx_buffer = tx_header;
 				retstatus = spi_slave_transmit(NUT_SPI, &hspi, 100);
 				if (retstatus != ESP_OK)
 				{
@@ -559,6 +566,7 @@ void Nut_Loop()
 				}
 				/* Then send the payload */
 				hspi.length = response_length;
+				hspi.tx_buffer = tx_buffer;
 				retstatus = spi_slave_transmit(NUT_SPI, &hspi, 100);
 				if (retstatus != ESP_OK)
 				{
@@ -582,13 +590,14 @@ void Nut_Loop()
 		/* Command not found, return error */
 		else
 		{
-			tx_buffer[0] = NUT_ERROR;
-			tx_buffer[1] = NUT_ERROR_CMD_UNKNOWN;
-			tx_buffer[2] = 0;
-			tx_buffer[3] = 0;
-			tx_buffer[4] = 0;
-			tx_buffer[5] = 0;
+			tx_header[0] = NUT_ERROR;
+			tx_header[1] = NUT_ERROR_CMD_UNKNOWN;
+			tx_header[2] = 0;
+			tx_header[3] = 0;
+			tx_header[4] = 0;
+			tx_header[5] = 0;
 			hspi.length = 6;
+			hspi.tx_buffer = tx_header;
 			retstatus = spi_slave_transmit(NUT_SPI, &hspi, 100);
 			if (retstatus != ESP_OK)
 			{
