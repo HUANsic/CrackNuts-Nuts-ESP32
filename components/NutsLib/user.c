@@ -38,6 +38,8 @@ NutStatus_e Echo(uint8_t *received_data_ptr, uint32_t received_data_length, uint
 #include "aes/esp_aes.h"
 #include "hal/aes_hal.h"
 #include "aes/esp_aes_internal.h"
+#include "soc/hwcrypto_reg.h"
+#include "hal/aes_types.h"
 
 mbedtls_aes_context aes_ctx;
 #define KEY_LENGTH 128
@@ -67,24 +69,61 @@ NutStatus_e AES_Encrypt(uint8_t *received_data_ptr, uint32_t received_data_lengt
 
 	// int status = mbedtls_aes_crypt_ecb(&aes_ctx, MBEDTLS_AES_ENCRYPT, received_data_ptr, result_buffer_ptr);
 
-	esp_aes_acquire_hardware();
-	aes_ctx.key_in_hardware = 0;
-	aes_ctx.key_in_hardware = aes_hal_setkey(aes_ctx.key, aes_ctx.key_bytes, MBEDTLS_AES_ENCRYPT);
-	aes_hal_mode_init(ESP_AES_BLOCK_MODE_ECB);
-
-	// Nut_Quiet();
 	Nut_LED(1);
 	Nut_Trigger_Set();
 
-	aes_hal_transform_block(received_data_ptr, result_buffer_ptr);
+	// Acquire AES hardware and enter critocal section
+	esp_aes_acquire_hardware();
+
+	// Set key and read back key in hardware
+	aes_ctx.key_in_hardware = 0;
+	aes_ctx.key_in_hardware = aes_hal_setkey(aes_ctx.key, aes_ctx.key_bytes, MBEDTLS_AES_ENCRYPT);
+	// aes_hal_mode_init(ESP_AES_BLOCK_MODE_ECB);
+
+	// disable DMA
+	REG_WRITE(AES_DMA_ENABLE_REG, 0);
+
+	// initialize AES hardware in ECB mode
+	// REG_WRITE(AES_MODE_REG, 0x00); // AES-128 Encrypt (already done in aes_hal_setkey)
+	// Set key (already done in aes_hal_setkey)
+	// Copy text to input registers
+	uint32_t temp32u;
+	for (int i = 0; i < AES_BLOCK_WORDS; i++)
+	{
+		memcpy(&temp32u, received_data_ptr + 4 * i, 4);
+		REG_WRITE(AES_TEXT_IN_BASE + i * 4, temp32u);
+	}
+
+	// Since you asked
+	Nut_Trigger_Clear();
+
+	// Start encryption
+	REG_WRITE(AES_TRIGGER_REG, 1);
+
+	// Wait until done
+	while (REG_READ(AES_STATE_REG) != ESP_AES_STATE_IDLE)
+		;
+
+	// aes_hal_transform_block(received_data_ptr, result_buffer_ptr);
 
 	// int status = esp_aes_block(&aes_ctx, received_data_ptr, result_buffer_ptr);
-	Nut_Trigger_Clear();
-	Nut_LED(0);
 
+	// Since you asked
+	Nut_Trigger_Set();
+
+	// Read back output registers
+	for (size_t i = 0; i < AES_BLOCK_WORDS; i++)
+	{
+		temp32u = REG_READ(AES_TEXT_OUT_BASE + (i * 4));
+		/* Memcpy to avoid potential unaligned access */
+		memcpy(result_buffer_ptr + i * 4, &temp32u, sizeof(temp32u));
+	}
+
+	// release hardware
 	esp_aes_release_hardware();
 
-	// Nut_Unquiet();
+	Nut_Trigger_Clear();
+	Nut_LED(0);
 
 	return NUT_OK;
 }
