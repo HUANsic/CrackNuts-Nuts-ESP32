@@ -33,10 +33,32 @@ NutStatus_e Echo(uint8_t *received_data_ptr, uint32_t received_data_length, uint
 	return NUT_OK;
 }
 
+#include "esp_sleep.h"
+
+NutStatus_e EnterLightSleep_NoWake(uint8_t *received_data_ptr, uint32_t received_data_length, uint8_t *result_buffer_ptr, uint32_t *result_length,
+								   uint32_t result_buffer_MAX_size)
+{
+	*result_length = 0;
+	esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
+	esp_light_sleep_start();
+	return NUT_OK;
+}
+
+NutStatus_e EnterDeepSleep_NoWake(uint8_t *received_data_ptr, uint32_t received_data_length, uint8_t *result_buffer_ptr, uint32_t *result_length,
+								  uint32_t result_buffer_MAX_size)
+{
+	*result_length = 0;
+	esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
+	esp_deep_sleep_start();
+	return NUT_OK;
+}
+
 /* User command */
 // @formatter:off
 NutAction_t command_list[] = {
 	{.command = 0x0001, .function = Echo},
+	{.command = 0x0501, .function = EnterLightSleep_NoWake},
+	{.command = 0x0503, .function = EnterDeepSleep_NoWake},
 };
 // @formatter:on
 uint16_t command_count = sizeof(command_list) / sizeof(command_list[0]);
